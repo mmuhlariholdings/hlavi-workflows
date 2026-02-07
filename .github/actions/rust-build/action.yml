@@ -1,0 +1,54 @@
+name: 'Rust Build'
+description: 'Build Rust project for specific target'
+inputs:
+  target:
+    description: 'Target triple to build for (e.g., x86_64-unknown-linux-gnu)'
+    required: false
+    default: ''
+  profile:
+    description: 'Build profile (dev, release)'
+    required: false
+    default: 'release'
+  features:
+    description: 'Features to enable'
+    required: false
+    default: '--all-features'
+  binary-name:
+    description: 'Name of the binary to build (for --bin flag)'
+    required: false
+    default: ''
+  additional-args:
+    description: 'Additional cargo build arguments'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build project
+      shell: bash
+      run: |
+        BUILD_CMD="cargo build"
+
+        if [ "${{ inputs.profile }}" = "release" ]; then
+          BUILD_CMD="$BUILD_CMD --release"
+        fi
+
+        if [ -n "${{ inputs.target }}" ]; then
+          BUILD_CMD="$BUILD_CMD --target ${{ inputs.target }}"
+        fi
+
+        if [ -n "${{ inputs.binary-name }}" ]; then
+          BUILD_CMD="$BUILD_CMD --bin ${{ inputs.binary-name }}"
+        fi
+
+        if [ -n "${{ inputs.features }}" ]; then
+          BUILD_CMD="$BUILD_CMD ${{ inputs.features }}"
+        fi
+
+        if [ -n "${{ inputs.additional-args }}" ]; then
+          BUILD_CMD="$BUILD_CMD ${{ inputs.additional-args }}"
+        fi
+
+        echo "Running: $BUILD_CMD"
+        eval $BUILD_CMD

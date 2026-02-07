@@ -39,78 +39,25 @@ jobs:
 
 ## Documentation
 
-This repository contains reusable workflows for CI/CD automation across Hlavi projects.
+This repository contains reusable workflows and composite actions for CI/CD automation across Hlavi projects.
 
-### Available Workflows
+### Structure
 
-**rust-ci.yml** - Complete CI pipeline for Rust projects
-- Formatting check with `cargo fmt`
-- Linting with `cargo clippy`
-- Tests on Linux, macOS, and Windows
-- Cross-platform builds
-
-**rust-version-bump.yml** - Automated version bumping
-- Semantic versioning (patch, minor, major)
-- Git tagging and release creation
-- Cargo.toml and Cargo.lock updates
-
-**rust-release-binary.yml** - Cross-platform binary building
-- Builds for Linux, macOS, Windows (AMD64 and ARM64)
-- Archive creation and release asset uploading
-
-### Example Usage
-
-**CI Workflow:**
-```yaml
-name: CI
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  ci:
-    uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-ci.yml@main
 ```
-
-**Version Bump Workflow:**
-```yaml
-name: Version Bump
-
-on:
-  workflow_dispatch:
-    inputs:
-      version_type:
-        type: choice
-        options: [patch, minor, major]
-
-jobs:
-  bump:
-    uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-version-bump.yml@main
-    with:
-      version-type: ${{ github.event.inputs.version_type }}
-      package-name: 'your-package-name'
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-**Release Workflow:**
-```yaml
-name: Release
-
-on:
-  push:
-    tags: ['v*']
-
-jobs:
-  release:
-    uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-release-binary.yml@main
-    with:
-      binary-name: 'your-binary-name'
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
+.github/
+├── actions/
+│   ├── setup-rust/
+│   │   └── action.yml          # Install Rust toolchain with caching
+│   ├── rust-lint/
+│   │   └── action.yml          # Run cargo fmt and clippy
+│   ├── rust-test/
+│   │   └── action.yml          # Run tests with optional coverage
+│   └── rust-build/
+│       └── action.yml          # Build for specific target
+└── workflows/
+    ├── rust-ci.yml             # Complete CI pipeline
+    ├── rust-version-bump.yml   # Automated version bumping
+    └── rust-release-binary.yml # Cross-platform binary building
 ```
 
 ## Development

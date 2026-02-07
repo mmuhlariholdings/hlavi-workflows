@@ -1,0 +1,33 @@
+name: 'Rust Test'
+description: 'Run cargo test with configurable options'
+inputs:
+  test-args:
+    description: 'Additional arguments for cargo test'
+    required: false
+    default: '--all-features'
+  coverage:
+    description: 'Enable code coverage with cargo-llvm-cov'
+    required: false
+    default: 'false'
+  coverage-format:
+    description: 'Coverage report format (lcov, html, json)'
+    required: false
+    default: 'lcov'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install cargo-llvm-cov
+      if: inputs.coverage == 'true'
+      shell: bash
+      run: cargo install cargo-llvm-cov
+
+    - name: Run tests with coverage
+      if: inputs.coverage == 'true'
+      shell: bash
+      run: cargo llvm-cov test ${{ inputs.test-args }} --${{ inputs.coverage-format }} --output-path coverage.${{ inputs.coverage-format }}
+
+    - name: Run tests
+      if: inputs.coverage != 'true'
+      shell: bash
+      run: cargo test ${{ inputs.test-args }}

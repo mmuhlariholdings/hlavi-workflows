@@ -58,6 +58,7 @@ or with ticket ID:
 - **chore** → maintenance
 - **docs** → documentation
 - **refactor** → workflow restructuring
+- **release** → version bumps and releases
 
 ### Examples
 

@@ -1,0 +1,23 @@
+name: 'Rust Lint'
+description: 'Run cargo fmt and clippy checks'
+inputs:
+  fmt-check:
+    description: 'Run cargo fmt --check'
+    required: false
+    default: 'true'
+  clippy-args:
+    description: 'Additional arguments for clippy'
+    required: false
+    default: '--all-targets --all-features -- -D warnings'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check formatting
+      if: inputs.fmt-check == 'true'
+      shell: bash
+      run: cargo fmt --all -- --check
+
+    - name: Run clippy
+      shell: bash
+      run: cargo clippy ${{ inputs.clippy-args }}
