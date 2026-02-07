@@ -92,11 +92,12 @@ jobs:
         if: ${{ !matrix.skip }}
         uses: actions/checkout@v4
 
-      - name: Install Rust
+      - name: Setup Rust
         if: ${{ !matrix.skip }}
-        uses: dtolnay/rust-toolchain@stable
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/setup-rust@main
         with:
           targets: ${{ matrix.target }}
+          cache-key: release-${{ matrix.target }}
 
       - name: Install cross-compilation tools (Linux ARM64)
         if: matrix.target == 'aarch64-unknown-linux-gnu' && !matrix.skip
@@ -106,7 +107,10 @@ jobs:
 
       - name: Build release binary
         if: ${{ !matrix.skip }}
-        run: cargo build --release --target ${{ matrix.target }}
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/rust-build@main
+        with:
+          target: ${{ matrix.target }}
+          profile: release
 
       - name: Create archive (Unix)
         if: matrix.os != 'windows-latest' && !matrix.skip

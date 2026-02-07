@@ -30,17 +30,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/setup-rust@main
         with:
           toolchain: ${{ inputs.rust-version }}
           components: rustfmt, clippy
 
-      - name: Check formatting
-        run: cargo fmt -- --check
-
-      - name: Run clippy
-        run: cargo clippy --all-targets ${{ inputs.cargo-features }} -- -D warnings
+      - name: Run lint checks
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/rust-lint@main
+        with:
+          clippy-args: '--all-targets ${{ inputs.cargo-features }} -- -D warnings'
 
   test:
     name: Test
@@ -54,34 +53,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/setup-rust@main
         with:
           toolchain: ${{ inputs.rust-version }}
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('Cargo.lock') }}
+          cache-key: test-${{ matrix.os }}
 
       - name: Build
         run: cargo build --verbose ${{ inputs.cargo-features }}
 
       - name: Run tests
-        run: cargo test --verbose ${{ inputs.cargo-features }}
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/rust-test@main
+        with:
+          test-args: '--verbose ${{ inputs.cargo-features }}'
 
   build:
     name: Build (${{ matrix.target }})
@@ -104,14 +88,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/setup-rust@main
         with:
           toolchain: ${{ inputs.rust-version }}
           targets: ${{ matrix.target }}
+          cache-key: build-${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        uses: mmuhlariholdings/hlavi-workflows/.github/actions/rust-build@main
+        with:
+          target: ${{ matrix.target }}
+          profile: release
+          features: ${{ inputs.cargo-features }}
 
       - name: Test binary (if binary crate)
         continue-on-error: true
