@@ -66,11 +66,14 @@ jobs:
 
       - name: Set final token
         id: final-token
+        env:
+          GITHUB_TOKEN: ${{ secrets.github-token }}
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           if [ "${{ steps.check.outputs.use_app }}" == "true" ]; then
-            echo "result=${{ steps.app-token.outputs.token }}" >> $GITHUB_OUTPUT
+            echo "result=$APP_TOKEN" >> $GITHUB_OUTPUT
           else
-            echo "result=${{ secrets.github-token }}" >> $GITHUB_OUTPUT
+            echo "result=$GITHUB_TOKEN" >> $GITHUB_OUTPUT
           fi
 
   determine-version:
