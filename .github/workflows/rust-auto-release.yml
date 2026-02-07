@@ -143,7 +143,6 @@ jobs:
       ref: 'main'
       package-name: ${{ inputs.package-name }}
       update-cargo-toml: true
-    secrets:
       github-token: ${{ needs.generate-token.outputs.token }}
 
   release:
@@ -154,5 +153,4 @@ jobs:
       tag: v${{ needs.determine-version.outputs.new-version }}
       binary-name: ${{ inputs.binary-name }}
       create-draft-release: ${{ inputs.create-draft-release }}
-    secrets:
       github-token: ${{ needs.generate-token.outputs.token }}
