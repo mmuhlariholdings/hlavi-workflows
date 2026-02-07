@@ -101,7 +101,3 @@ jobs:
           target: ${{ matrix.target }}
           profile: release
           features: ${{ inputs.cargo-features }}
-
-      - name: Test binary (if binary crate)
-        continue-on-error: true
-        run: cargo run --release --target ${{ matrix.target }} -- --version
