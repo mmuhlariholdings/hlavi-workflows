@@ -40,8 +40,8 @@ jobs:
           # Fetch main branch
           git fetch origin main
 
-          # Get the latest tag from main branch
-          BASE_VERSION=$(git describe --tags --abbrev=0 origin/main 2>/dev/null || echo "0.0.0")
+          # Get the latest tag from main branch, excluding PR preview tags
+          BASE_VERSION=$(git describe --tags --abbrev=0 --exclude='*-pr.*' origin/main 2>/dev/null || echo "0.0.0")
 
           # Remove 'v' prefix if present
           BASE_VERSION=${BASE_VERSION#v}

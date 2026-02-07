@@ -46,8 +46,8 @@ jobs:
       - name: Get current version
         id: current_version
         run: |
-          # Get latest tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # Get latest tag, excluding PR preview tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 --exclude='*-pr.*' 2>/dev/null || echo "v0.0.0")
           CURRENT_VERSION=${LATEST_TAG#v}
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "Current version: $CURRENT_VERSION"
@@ -55,8 +55,8 @@ jobs:
       - name: Analyze commits for bump type
         id: bump
         run: |
-          # Get commits since last tag
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          # Get commits since last tag, excluding PR preview tags
+          LATEST_TAG=$(git describe --tags --abbrev=0 --exclude='*-pr.*' 2>/dev/null || echo "")
 
           if [ -z "$LATEST_TAG" ]; then
             # No tags yet, check all commits
