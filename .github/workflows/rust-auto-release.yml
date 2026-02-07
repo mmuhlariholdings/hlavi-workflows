@@ -24,14 +24,58 @@ on:
     secrets:
       github-token:
         description: 'GitHub token for creating tags and releases'
-        required: true
+        required: false
+      app-id:
+        description: 'GitHub App ID for generating installation token (optional, for bypass permissions)'
+        required: false
+      app-private-key:
+        description: 'GitHub App private key (optional, for bypass permissions)'
+        required: false
 
 permissions:
   contents: write
 
 jobs:
+  generate-token:
+    name: Generate Token
+    runs-on: ubuntu-latest
+    outputs:
+      token: ${{ steps.final-token.outputs.result }}
+    steps:
+      - name: Check which token to use
+        id: check
+        env:
+          APP_ID: ${{ secrets.app-id }}
+          APP_PRIVATE_KEY: ${{ secrets.app-private-key }}
+        run: |
+          if [ -n "$APP_ID" ] && [ -n "$APP_PRIVATE_KEY" ]; then
+            echo "Using GitHub App token for bypass permissions"
+            echo "use_app=true" >> $GITHUB_OUTPUT
+          else
+            echo "Using standard GitHub token"
+            echo "use_app=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate GitHub App token
+        if: steps.check.outputs.use_app == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.app-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Set final token
+        id: final-token
+        run: |
+          if [ "${{ steps.check.outputs.use_app }}" == "true" ]; then
+            echo "result=${{ steps.app-token.outputs.token }}" >> $GITHUB_OUTPUT
+          else
+            echo "result=${{ secrets.github-token }}" >> $GITHUB_OUTPUT
+          fi
+
   determine-version:
     name: Determine Version Bump
+    needs: generate-token
     runs-on: ubuntu-latest
     outputs:
       bump-type: ${{ steps.bump.outputs.type }}
@@ -119,7 +163,7 @@ jobs:
 
   tag:
     name: Create Tag
-    needs: determine-version
+    needs: [generate-token, determine-version]
     uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-tag.yml@main
     with:
       version: ${{ needs.determine-version.outputs.new-version }}
@@ -127,15 +171,15 @@ jobs:
       package-name: ${{ inputs.package-name }}
       update-cargo-toml: true
     secrets:
-      github-token: ${{ secrets.github-token }}
+      github-token: ${{ needs.generate-token.outputs.token }}
 
   release:
     name: Create Release
-    needs: [determine-version, tag]
+    needs: [generate-token, determine-version, tag]
     uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-release-from-tag.yml@main
     with:
       tag: v${{ needs.determine-version.outputs.new-version }}
       binary-name: ${{ inputs.binary-name }}
       create-draft-release: ${{ inputs.create-draft-release }}
     secrets:
-      github-token: ${{ secrets.github-token }}
+      github-token: ${{ needs.generate-token.outputs.token }}
