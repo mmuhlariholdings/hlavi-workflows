@@ -56,7 +56,7 @@ This repository contains reusable workflows and composite actions for CI/CD auto
 │       └── action.yml          # Build for specific target
 └── workflows/
     ├── rust-ci.yml             # Complete CI pipeline
-    ├── rust-version-bump.yml   # Automated version bumping
+    ├── rust-tag-and-release.yml   # Automated version bumping
     └── rust-release-binary.yml # Cross-platform binary building
 ```
 
