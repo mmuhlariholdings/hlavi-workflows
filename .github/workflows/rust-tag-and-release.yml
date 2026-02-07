@@ -110,7 +110,7 @@ jobs:
 
       - name: Create and push tag
         run: |
-          git tag -a "v${{ steps.new_version.outputs.version }}" -m "Release v${{ steps.new_version.outputs.version }}"
+          git tag -a "v${{ steps.new_version.outputs.version }}" -m "v${{ steps.new_version.outputs.version }}"
           git push origin main
           git push origin "v${{ steps.new_version.outputs.version }}"
 
@@ -132,7 +132,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.github-token }}
         run: |
           gh release create "v${{ needs.tag.outputs.new-version }}" \
-            --title "Release v${{ needs.tag.outputs.new-version }}" \
+            --title "v${{ needs.tag.outputs.new-version }}" \
             --generate-notes \
             --draft
 
@@ -147,7 +147,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.github-token }}
         run: |
           gh release create "v${{ needs.tag.outputs.new-version }}" \
-            --title "Release v${{ needs.tag.outputs.new-version }}" \
+            --title "v${{ needs.tag.outputs.new-version }}" \
             --generate-notes
 
           echo "✅ Release created at: https://github.com/${{ github.repository }}/releases"
