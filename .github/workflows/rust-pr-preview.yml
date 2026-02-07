@@ -1,0 +1,129 @@
+name: Rust PR Preview Build
+
+on:
+  workflow_call:
+    inputs:
+      package-name:
+        description: 'Package name (e.g., hlavi-cli, hlavi-core)'
+        required: true
+        type: string
+      binary-name:
+        description: 'Binary name (optional, for binary crates only)'
+        required: false
+        type: string
+    secrets:
+      github-token:
+        description: 'GitHub token for creating tags and releases'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  generate-version:
+    name: Generate Preview Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.preview_version.outputs.version }}
+      tag: ${{ steps.preview_version.outputs.tag }}
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get base version from main
+        id: base_version
+        run: |
+          # Fetch main branch
+          git fetch origin main
+
+          # Get the latest tag from main branch
+          BASE_VERSION=$(git describe --tags --abbrev=0 origin/main 2>/dev/null || echo "0.0.0")
+
+          # Remove 'v' prefix if present
+          BASE_VERSION=${BASE_VERSION#v}
+
+          echo "version=${BASE_VERSION}" >> $GITHUB_OUTPUT
+          echo "Base version from main: ${BASE_VERSION}"
+
+      - name: Generate preview version
+        id: preview_version
+        run: |
+          BASE="${{ steps.base_version.outputs.version }}"
+          PR_NUM="${{ github.event.pull_request.number }}"
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA=${SHORT_SHA:0:7}
+
+          PREVIEW_VERSION="${BASE}-pr.${PR_NUM}.${SHORT_SHA}"
+          TAG_NAME="v${PREVIEW_VERSION}"
+
+          echo "version=${PREVIEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Preview version: ${PREVIEW_VERSION}"
+          echo "Tag name: ${TAG_NAME}"
+
+  tag:
+    name: Create Tag
+    needs: generate-version
+    uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-tag.yml@main
+    with:
+      version: ${{ needs.generate-version.outputs.version }}
+      ref: ${{ github.event.pull_request.head.sha }}
+      package-name: ${{ inputs.package-name }}
+      update-cargo-toml: false
+    secrets:
+      github-token: ${{ secrets.github-token }}
+
+  release:
+    name: Create Release
+    needs: [generate-version, tag]
+    uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-release-from-tag.yml@main
+    with:
+      tag: ${{ needs.generate-version.outputs.tag }}
+      binary-name: ${{ inputs.binary-name }}
+      create-draft-release: false
+    secrets:
+      github-token: ${{ secrets.github-token }}
+
+  comment:
+    name: Comment on PR
+    needs: [generate-version, release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ needs.generate-version.outputs.version }}';
+            const tag = '${{ needs.generate-version.outputs.tag }}';
+            const packageName = '${{ inputs.package-name }}';
+            const binaryName = '${{ inputs.binary-name }}';
+
+            let usageExample = '';
+            if (binaryName) {
+              usageExample = `\n\n**Download**: Check the [release page](https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag})`;
+            }
+
+            const cargoExample = `\`\`\`toml
+            [dependencies]
+            ${packageName} = { git = "https://github.com/${context.repo.owner}/${context.repo.repo}", tag = "${tag}" }
+            \`\`\``;
+
+            const comment = `### 🚀 Preview Release Published
+
+            **Version**: \`${tag}\`
+            **Commit**: \`${{ github.event.pull_request.head.sha }}\`
+            **Release**: https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}
+            ${usageExample}
+
+            **Use in Cargo.toml**:
+            ${cargoExample}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

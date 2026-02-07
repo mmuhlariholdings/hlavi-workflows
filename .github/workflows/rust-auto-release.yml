@@ -1,0 +1,141 @@
+name: Rust Auto Release
+
+on:
+  workflow_call:
+    inputs:
+      package-name:
+        description: 'Package name (e.g., hlavi-cli)'
+        required: true
+        type: string
+      binary-name:
+        description: 'Binary name (optional, for binary crates)'
+        required: false
+        type: string
+      create-draft-release:
+        description: 'Create draft release instead of publishing immediately'
+        required: false
+        type: boolean
+        default: false
+      default-bump:
+        description: 'Default version bump type if no conventional commits found'
+        required: false
+        type: string
+        default: 'patch'
+    secrets:
+      github-token:
+        description: 'GitHub token for creating tags and releases'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  determine-version:
+    name: Determine Version Bump
+    runs-on: ubuntu-latest
+    outputs:
+      bump-type: ${{ steps.bump.outputs.type }}
+      new-version: ${{ steps.calculate.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current version
+        id: current_version
+        run: |
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          CURRENT_VERSION=${LATEST_TAG#v}
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Analyze commits for bump type
+        id: bump
+        run: |
+          # Get commits since last tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$LATEST_TAG" ]; then
+            # No tags yet, check all commits
+            COMMITS=$(git log --pretty=format:"%s")
+          else
+            # Get commits since last tag
+            COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s")
+          fi
+
+          echo "Analyzing commits:"
+          echo "$COMMITS"
+          echo ""
+
+          # Check for breaking changes (BREAKING CHANGE: or feat!: or fix!:)
+          if echo "$COMMITS" | grep -qE "^[a-z]+(\([a-z0-9-]+\))?!:|BREAKING[- ]CHANGE:"; then
+            BUMP_TYPE="major"
+            echo "Found breaking change → major bump"
+          # Check for new features (feat:)
+          elif echo "$COMMITS" | grep -qE "^feat(\([a-z0-9-]+\))?:"; then
+            BUMP_TYPE="minor"
+            echo "Found feature → minor bump"
+          # Check for fixes (fix:)
+          elif echo "$COMMITS" | grep -qE "^fix(\([a-z0-9-]+\))?:"; then
+            BUMP_TYPE="patch"
+            echo "Found fix → patch bump"
+          # Default bump
+          else
+            BUMP_TYPE="${{ inputs.default-bump }}"
+            echo "No conventional commits found → default $BUMP_TYPE bump"
+          fi
+
+          echo "type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Calculate new version
+        id: calculate
+        run: |
+          CURRENT="${{ steps.current_version.outputs.version }}"
+          BUMP_TYPE="${{ steps.bump.outputs.type }}"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case "$BUMP_TYPE" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION ($BUMP_TYPE bump)"
+
+  tag:
+    name: Create Tag
+    needs: determine-version
+    uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-tag.yml@main
+    with:
+      version: ${{ needs.determine-version.outputs.new-version }}
+      ref: 'main'
+      package-name: ${{ inputs.package-name }}
+      update-cargo-toml: true
+    secrets:
+      github-token: ${{ secrets.github-token }}
+
+  release:
+    name: Create Release
+    needs: [determine-version, tag]
+    uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-release-from-tag.yml@main
+    with:
+      tag: v${{ needs.determine-version.outputs.new-version }}
+      binary-name: ${{ inputs.binary-name }}
+      create-draft-release: ${{ inputs.create-draft-release }}
+    secrets:
+      github-token: ${{ secrets.github-token }}

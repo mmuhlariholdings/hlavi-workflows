@@ -1,0 +1,109 @@
+name: Rust Tag
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to tag (e.g., 0.1.4 or v0.1.4 or 0.1.4-pr.123)'
+        required: true
+        type: string
+      ref:
+        description: 'Branch, tag, or commit SHA to tag (default: main)'
+        required: false
+        type: string
+        default: 'main'
+      package-name:
+        description: 'Package name for cargo update (e.g., hlavi-core)'
+        required: true
+        type: string
+      update-cargo-toml:
+        description: 'Update Cargo.toml version (set false for tags like PR tags)'
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      github-token:
+        description: 'GitHub token for pushing tags'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Create Tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag-name: ${{ steps.tag_info.outputs.tag_name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          token: ${{ secrets.github-token }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Process version
+        id: tag_info
+        run: |
+          VERSION="${{ inputs.version }}"
+
+          # Remove 'v' prefix if present
+          VERSION_NUMBER="${VERSION#v}"
+
+          # Tag name always has 'v' prefix
+          TAG_NAME="v${VERSION_NUMBER}"
+
+          echo "version_number=${VERSION_NUMBER}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "Tag will be: ${TAG_NAME}"
+
+      - name: Install Rust
+        if: ${{ inputs.update-cargo-toml }}
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-edit
+        if: ${{ inputs.update-cargo-toml }}
+        run: cargo install cargo-edit
+
+      - name: Update version in Cargo.toml
+        if: ${{ inputs.update-cargo-toml }}
+        run: |
+          cargo set-version ${{ steps.tag_info.outputs.version_number }}
+          echo "Updated Cargo.toml to version ${{ steps.tag_info.outputs.version_number }}"
+
+      - name: Update Cargo.lock
+        if: ${{ inputs.update-cargo-toml }}
+        run: cargo update -p ${{ inputs.package-name }}
+
+      - name: Commit version bump
+        if: ${{ inputs.update-cargo-toml }}
+        run: |
+          git add Cargo.toml
+          # Only add Cargo.lock if it's tracked (binary crates commit it, libraries don't)
+          if git ls-files --error-unmatch Cargo.lock 2>/dev/null; then
+            git add Cargo.lock
+          fi
+
+          # Check if there are changes to commit
+          if ! git diff --staged --quiet; then
+            git commit -m "release: bump version to ${{ steps.tag_info.outputs.version_number }}"
+            git push origin HEAD:${{ inputs.ref }}
+            echo "Committed version bump"
+          else
+            echo "No changes to commit (version already up to date)"
+          fi
+
+      - name: Create and push tag
+        run: |
+          git tag -a "${{ steps.tag_info.outputs.tag_name }}" -m "${{ steps.tag_info.outputs.tag_name }}"
+          git push origin "${{ steps.tag_info.outputs.tag_name }}"
+
+          echo "✅ Tag ${{ steps.tag_info.outputs.tag_name }} created and pushed"
+          echo "✅ Tagged commit: $(git rev-parse HEAD)"
