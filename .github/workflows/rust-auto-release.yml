@@ -22,15 +22,12 @@ on:
         type: string
         default: 'patch'
     secrets:
-      github-token:
-        description: 'GitHub token for creating tags and releases'
-        required: false
       app-id:
-        description: 'GitHub App ID for generating installation token (optional, for bypass permissions)'
-        required: false
+        description: 'GitHub App ID for generating installation token with bypass permissions'
+        required: true
       app-private-key:
-        description: 'GitHub App private key (optional, for bypass permissions)'
-        required: false
+        description: 'GitHub App private key for bypass permissions'
+        required: true
 
 permissions:
   contents: write
@@ -40,50 +37,14 @@ jobs:
     name: Generate Token
     runs-on: ubuntu-latest
     outputs:
-      token: ${{ steps.final-token.outputs.result }}
+      token: ${{ steps.app-token.outputs.token }}
     steps:
-      - name: Check which token to use
-        id: check
-        env:
-          APP_ID: ${{ secrets.app-id }}
-          APP_PRIVATE_KEY: ${{ secrets.app-private-key }}
-        run: |
-          if [ -n "$APP_ID" ] && [ -n "$APP_PRIVATE_KEY" ]; then
-            echo "Using GitHub App token for bypass permissions"
-            echo "use_app=true" >> $GITHUB_OUTPUT
-          else
-            echo "Using standard GitHub token"
-            echo "use_app=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Generate GitHub App token
-        if: steps.check.outputs.use_app == 'true'
         id: app-token
         uses: actions/create-github-app-token@v1
         with:
           app-id: ${{ secrets.app-id }}
           private-key: ${{ secrets.app-private-key }}
-
-      - name: Set final token (App)
-        if: steps.check.outputs.use_app == 'true'
-        id: set-app-token
-        run: echo "result=${{ steps.app-token.outputs.token }}" >> $GITHUB_OUTPUT
-
-      - name: Set final token (GitHub)
-        if: steps.check.outputs.use_app == 'false'
-        id: set-github-token
-        env:
-          GITHUB_TOKEN: ${{ secrets.github-token }}
-        run: echo "result=$GITHUB_TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Output final token
-        id: final-token
-        run: |
-          if [ "${{ steps.check.outputs.use_app }}" == "true" ]; then
-            echo "result=${{ steps.set-app-token.outputs.result }}" >> $GITHUB_OUTPUT
-          else
-            echo "result=${{ steps.set-github-token.outputs.result }}" >> $GITHUB_OUTPUT
-          fi
 
   determine-version:
     name: Determine Version Bump
