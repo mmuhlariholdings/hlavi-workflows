@@ -1,4 +1,4 @@
-name: Rust Version Bump
+name: Rust Tag and Release
 
 on:
   workflow_call:
@@ -29,8 +29,8 @@ permissions:
   contents: write
 
 jobs:
-  bump-version:
-    name: Bump Version
+  tag:
+    name: Tag
     runs-on: ubuntu-latest
     outputs:
       new-version: ${{ steps.new_version.outputs.version }}
@@ -114,18 +114,28 @@ jobs:
           git push origin main
           git push origin "v${{ steps.new_version.outputs.version }}"
 
+          echo "✅ Version bumped to v${{ steps.new_version.outputs.version }}"
+          echo "✅ Tag created and pushed"
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: tag
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Create GitHub Release (Draft)
         if: ${{ inputs.create-draft-release }}
         env:
           GITHUB_TOKEN: ${{ secrets.github-token }}
         run: |
-          gh release create "v${{ steps.new_version.outputs.version }}" \
-            --title "Release v${{ steps.new_version.outputs.version }}" \
+          gh release create "v${{ needs.tag.outputs.new-version }}" \
+            --title "Release v${{ needs.tag.outputs.new-version }}" \
             --generate-notes \
             --draft
 
-          echo "✅ Version bumped to v${{ steps.new_version.outputs.version }}"
-          echo "✅ Tag created and pushed"
           echo "✅ Draft release created at: https://github.com/${{ github.repository }}/releases"
           echo ""
           echo "The release workflow will now build binaries automatically."
@@ -136,10 +146,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.github-token }}
         run: |
-          gh release create "v${{ steps.new_version.outputs.version }}" \
-            --title "Release v${{ steps.new_version.outputs.version }}" \
+          gh release create "v${{ needs.tag.outputs.new-version }}" \
+            --title "Release v${{ needs.tag.outputs.new-version }}" \
             --generate-notes
 
-          echo "✅ Version bumped to v${{ steps.new_version.outputs.version }}"
-          echo "✅ Tag created and pushed"
           echo "✅ Release created at: https://github.com/${{ github.repository }}/releases"
