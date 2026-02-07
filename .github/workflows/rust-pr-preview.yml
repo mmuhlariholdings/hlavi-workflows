@@ -74,8 +74,7 @@ jobs:
       ref: ${{ github.event.pull_request.head.sha }}
       package-name: ${{ inputs.package-name }}
       update-cargo-toml: false
-    secrets:
-      github-token: ${{ secrets.github-token }}
+      github-token: ${{ inputs.github-token }}
 
   release:
     name: Create Release
