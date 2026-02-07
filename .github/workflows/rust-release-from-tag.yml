@@ -16,10 +16,10 @@ on:
         required: false
         type: boolean
         default: false
-    secrets:
       github-token:
         description: 'GitHub token for creating releases'
         required: true
+        type: string
 
 permissions:
   contents: write
@@ -101,7 +101,7 @@ jobs:
       - name: Create GitHub Release (Draft)
         if: ${{ inputs.create-draft-release }}
         env:
-          GITHUB_TOKEN: ${{ secrets.github-token }}
+          GITHUB_TOKEN: ${{ inputs.github-token }}
         run: |
           # Create release
           gh release create "${{ inputs.tag }}" \
@@ -119,7 +119,7 @@ jobs:
       - name: Create GitHub Release (Published)
         if: ${{ !inputs.create-draft-release }}
         env:
-          GITHUB_TOKEN: ${{ secrets.github-token }}
+          GITHUB_TOKEN: ${{ inputs.github-token }}
         run: |
           # Create release
           gh release create "${{ inputs.tag }}" \

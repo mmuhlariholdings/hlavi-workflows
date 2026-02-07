@@ -21,10 +21,10 @@ on:
         required: false
         type: boolean
         default: true
-    secrets:
       github-token:
         description: 'GitHub token for pushing tags'
         required: true
+        type: string
 
 permissions:
   contents: write
@@ -42,7 +42,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           fetch-depth: 0
-          token: ${{ secrets.github-token }}
+          token: ${{ inputs.github-token }}
 
       - name: Configure Git
         run: |
