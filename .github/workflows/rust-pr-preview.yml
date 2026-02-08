@@ -11,10 +11,10 @@ on:
         description: 'Binary name (optional, for binary crates only)'
         required: false
         type: string
+    secrets:
       github-token:
         description: 'GitHub token for creating tags and releases'
         required: true
-        type: string
 
 permissions:
   contents: write
@@ -74,7 +74,8 @@ jobs:
       ref: ${{ github.event.pull_request.head.sha }}
       package-name: ${{ inputs.package-name }}
       update-cargo-toml: false
-      github-token: ${{ inputs.github-token }}
+    secrets:
+      github-token: ${{ secrets.github-token }}
 
   release:
     name: Create Release
@@ -84,7 +85,8 @@ jobs:
       tag: ${{ needs.generate-version.outputs.tag }}
       binary-name: ${{ inputs.binary-name }}
       create-draft-release: false
-      github-token: ${{ inputs.github-token }}
+    secrets:
+      github-token: ${{ secrets.github-token }}
 
   comment:
     name: Comment on PR

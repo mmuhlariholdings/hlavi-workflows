@@ -21,10 +21,10 @@ on:
         required: false
         type: string
         default: 'patch'
+    secrets:
       github-token:
         description: 'GitHub token with bypass permissions for pushing tags'
         required: true
-        type: string
 
 permissions:
   contents: write
@@ -126,7 +126,8 @@ jobs:
       ref: 'main'
       package-name: ${{ inputs.package-name }}
       update-cargo-toml: true
-      github-token: ${{ inputs.github-token }}
+    secrets:
+      github-token: ${{ secrets.github-token }}
 
   release:
     name: Create Release
@@ -136,4 +137,5 @@ jobs:
       tag: v${{ needs.determine-version.outputs.new-version }}
       binary-name: ${{ inputs.binary-name }}
       create-draft-release: ${{ inputs.create-draft-release }}
-      github-token: ${{ inputs.github-token }}
+    secrets:
+      github-token: ${{ secrets.github-token }}
