@@ -21,34 +21,17 @@ on:
         required: false
         type: string
         default: 'patch'
-    secrets:
-      app-id:
-        description: 'GitHub App ID for generating installation token with bypass permissions'
+      github-token:
+        description: 'GitHub token with bypass permissions for pushing tags'
         required: true
-      app-private-key:
-        description: 'GitHub App private key for bypass permissions'
-        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
-  generate-token:
-    name: Generate Token
-    runs-on: ubuntu-latest
-    outputs:
-      token: ${{ steps.app-token.outputs.token }}
-    steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.app-id }}
-          private-key: ${{ secrets.app-private-key }}
-
   determine-version:
     name: Determine Version Bump
-    needs: generate-token
     runs-on: ubuntu-latest
     outputs:
       bump-type: ${{ steps.bump.outputs.type }}
@@ -136,21 +119,21 @@ jobs:
 
   tag:
     name: Create Tag
-    needs: [generate-token, determine-version]
+    needs: determine-version
     uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-tag.yml@main
     with:
       version: ${{ needs.determine-version.outputs.new-version }}
       ref: 'main'
       package-name: ${{ inputs.package-name }}
       update-cargo-toml: true
-      github-token: ${{ needs.generate-token.outputs.token }}
+      github-token: ${{ inputs.github-token }}
 
   release:
     name: Create Release
-    needs: [generate-token, determine-version, tag]
+    needs: [determine-version, tag]
     uses: mmuhlariholdings/hlavi-workflows/.github/workflows/rust-release-from-tag.yml@main
     with:
       tag: v${{ needs.determine-version.outputs.new-version }}
       binary-name: ${{ inputs.binary-name }}
       create-draft-release: ${{ inputs.create-draft-release }}
-      github-token: ${{ needs.generate-token.outputs.token }}
+      github-token: ${{ inputs.github-token }}
