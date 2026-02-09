@@ -1,4 +1,4 @@
-name: Rust PR Preview Build
+name: Rust Preview Release Build
 
 on:
   workflow_call:
@@ -40,7 +40,7 @@ jobs:
           # Fetch main branch
           git fetch origin main
 
-          # Get the latest tag from main branch, excluding PR preview tags
+          # Get the latest tag from main branch, excluding Preview Release tags
           BASE_VERSION=$(git describe --tags --abbrev=0 --exclude='*-pr.*' origin/main 2>/dev/null || echo "0.0.0")
 
           # Remove 'v' prefix if present
