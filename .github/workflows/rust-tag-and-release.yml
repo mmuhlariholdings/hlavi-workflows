@@ -106,7 +106,7 @@ jobs:
           if git ls-files --error-unmatch Cargo.lock 2>/dev/null; then
             git add Cargo.lock
           fi
-          git commit -m "release: bump version to ${{ steps.new_version.outputs.version }}"
+          git commit -m "Release: Bump Version to ${{ steps.new_version.outputs.version }}"
 
       - name: Create and push tag
         run: |

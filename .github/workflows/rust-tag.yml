@@ -93,7 +93,7 @@ jobs:
 
           # Check if there are changes to commit
           if ! git diff --staged --quiet; then
-            git commit -m "release: bump version to ${{ steps.tag_info.outputs.version_number }}"
+            git commit -m "Release: Bump Version to ${{ steps.tag_info.outputs.version_number }}"
             git push origin HEAD:${{ inputs.ref }}
             echo "Committed version bump"
           else
