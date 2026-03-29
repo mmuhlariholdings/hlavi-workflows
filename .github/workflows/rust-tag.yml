@@ -102,8 +102,12 @@ jobs:
 
       - name: Create and push tag
         run: |
-          git tag -a "${{ steps.tag_info.outputs.tag_name }}" -m "${{ steps.tag_info.outputs.tag_name }}"
-          git push origin "${{ steps.tag_info.outputs.tag_name }}"
-
-          echo "✅ Tag ${{ steps.tag_info.outputs.tag_name }} created and pushed"
-          echo "✅ Tagged commit: $(git rev-parse HEAD)"
+          TAG="${{ steps.tag_info.outputs.tag_name }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "ℹ️ Tag $TAG already exists (concurrent release run) — skipping"
+          else
+            git tag -a "$TAG" -m "$TAG"
+            git push origin "$TAG"
+            echo "✅ Tag $TAG created and pushed"
+            echo "✅ Tagged commit: $(git rev-parse HEAD)"
+          fi
